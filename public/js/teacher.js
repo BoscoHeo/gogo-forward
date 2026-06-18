@@ -7,7 +7,7 @@ let stageCount = 0;
 let questionIdCounter = 0;
 let currentTeamCount = 2;
 const TEAM_EMOJIS = ['🔴','🔵','🟢','🟡','🟠','🟣'];
-const TEAM_DEFAULT_NAMES = ['1모둥','2모둥','3모둥','4모둥','5모둥','6모둥'];
+const TEAM_DEFAULT_NAMES = ['1모둠','2모둠','3모둠','4모둠','5모둠','6모둠'];
 
 // ---- Teacher Login/Register ----
 function switchLoginTab(tab) {
