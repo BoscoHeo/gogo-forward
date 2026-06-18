@@ -294,6 +294,11 @@ function parseAlternatingFormat(lines, sp, skip) {
     const stages = [];
     let cur = null;
 
+    const isOxAnswer = (t) => {
+        const upper = t.trim().toUpperCase();
+        return ['O', 'X', '⭕', '❌', '정답: O', '정답: X', '정답 O', '정답 X', '정답:O', '정답:X', '정답 : O', '정답 : X'].includes(upper);
+    };
+
     // 1단계: 스테이지와 내용 분리, 줄 합치기
     const items = []; // {type: 'stage'|'line', ...}
     for (let line of lines) {
@@ -302,33 +307,33 @@ function parseAlternatingFormat(lines, sp, skip) {
             items.push({ type: 'stage', title: m[2].replace(/^[:\s]+/, '').trim() || `스테이지 ${items.filter(x => x.type === 'stage').length + 1}` });
             continue;
         }
-        if (skip.test(line) || line.length < 2) continue;
+        
+        if (skip.test(line)) continue;
+        // 1글자 라인 무시 방지 (O, X, 숫자 등은 허용)
+        if (line.length < 2 && !line.match(/^[a-zA-Z0-9가-힣⭕❌]$/)) continue; 
+        
         items.push({ type: 'line', text: line });
     }
 
     // 2단계: 줄 합치기 - 이어지는 설명줄을 이전 줄에 병합
-    // 규칙: -로 시작하는 줄 또는 앞 줄이 ?로 안 끝나는 긴 줄 뒤의 긴 줄 = 병합
     const merged = [];
     for (let item of items) {
         if (item.type === 'stage') { merged.push(item); continue; }
         const text = item.text;
         const prev = merged.length > 0 ? merged[merged.length - 1] : null;
 
-        // 이전 줄에 병합해야 하는 경우
         if (prev && prev.type === 'line') {
             const startsWithDash = text.startsWith('-') || text.startsWith('–');
             const prevIsLong = prev.text.length > 15;
             const thisIsLong = text.length > 15;
-            // -로 시작 = 이전 문제의 부연설명
             if (startsWithDash) { prev.text += ' ' + text; continue; }
-            // 이전 줄과 현재 줄 모두 길면 = 같은 문제의 일부일 가능성
             if (prevIsLong && thisIsLong && !prev.text.match(/[?？]$/)) { prev.text += ' ' + text; continue; }
         }
         merged.push({ type: 'line', text: text });
     }
 
-    // 3단계: 문제-정답 쌍 만들기 (긴 줄=문제, 짧은 줄=정답)
-    const MAX_ANSWER_LEN = 20; // 정답은 보통 20자 이하
+    // 3단계: 문제-정답 쌍 만들기
+    const MAX_ANSWER_LEN = 20; 
     cur = null;
     let pendingQuestion = null;
 
@@ -344,29 +349,29 @@ function parseAlternatingFormat(lines, sp, skip) {
         const text = item.text;
         const isShort = text.length <= MAX_ANSWER_LEN;
         const isLong = text.length > MAX_ANSWER_LEN;
+        const isOx = isOxAnswer(text);
 
         if (pendingQuestion) {
-            // 이전에 문제가 대기 중
-            if (isShort) {
-                // 짧은 줄 = 정답
+            if (isShort || isOx) {
                 cur.questions.push({ text: pendingQuestion, answer: text });
                 pendingQuestion = null;
             } else {
-                // 긴 줄 = 이전 문제는 정답 없이 저장, 이 줄이 새 문제
                 cur.questions.push({ text: pendingQuestion, answer: '' });
                 pendingQuestion = text;
             }
         } else {
-            if (isLong || text.match(/[?？]$/)) {
-                // 긴 줄 또는 ?로 끝남 = 문제
+            if (isOx && cur.questions.length > 0 && cur.questions[cur.questions.length - 1].answer === '') {
+                // 이전 문제가 단독 문제로 잘못 들어갔는데 현재 줄이 O/X인 경우
+                cur.questions[cur.questions.length - 1].answer = text;
+            } else if (isLong || text.match(/[?？]$/) || text.match(/^[0-9]+[.\)]/)) {
+                // 문장이 길거나 ?로 끝나거나 번호로 시작하면 문제로 취급
                 pendingQuestion = text;
             } else {
-                // 짧은 줄인데 앞에 문제가 없으면 단독 문제로 처리
                 cur.questions.push({ text: text, answer: '' });
             }
         }
     }
-    // 마지막 대기 문제 처리
+    
     if (pendingQuestion && cur) {
         cur.questions.push({ text: pendingQuestion, answer: '' });
     }
