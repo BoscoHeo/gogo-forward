@@ -88,6 +88,12 @@ async function joinGame() {
 
     // Listen for game state changes
     listenGame(code, (game) => {
+        if (!game || !game.players || !game.players[myPlayerId]) {
+            alert('방에서 내보내졌거나 게임이 종료되었습니다.');
+            location.reload();
+            return;
+        }
+        
         currentGameData = game;
         if (game.status === 'playing') {
             showPage('page-student-game');

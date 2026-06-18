@@ -283,6 +283,18 @@ function startDashboardPolling() {
 
 function renderDashboard(game) {
     if (!game) return;
+    
+    // UI 표시 상태 관리
+    if (game.status === 'waiting') {
+        document.getElementById('share-area').classList.remove('hidden');
+        document.getElementById('game-progress').classList.remove('hidden');
+        document.getElementById('team-scores').classList.add('hidden'); // 대기 중엔 팀 점수 숨김
+    } else if (game.status === 'playing') {
+        document.getElementById('share-area').classList.add('hidden');
+        document.getElementById('game-progress').classList.remove('hidden');
+        if (game.teamMode) document.getElementById('team-scores').classList.remove('hidden');
+    }
+    
     const players = Object.values(game.players || {});
     const totalStages = game.stages.length;
     const teams = game.teams || [];
@@ -301,17 +313,27 @@ function renderDashboard(game) {
 
         // 팀 배정 드롭다운 (team mode 시)
         let teamSelector = '';
+        const playerId = Object.keys(game.players || {}).find(k => game.players[k] === p)
+                      || Object.entries(game.players || {}).find(([,v])=>v.name===p.name)?.[0] || '';
+                      
         if (game.teamMode && teams.length > 0) {
             const opts = teams.map(t =>
                 `<option value="${t.id}" ${p.team === t.id ? 'selected' : ''}>${t.emoji} ${t.name}</option>`
             ).join('');
-            const playerId = Object.keys(game.players || {}).find(k => game.players[k] === p)
-                          || Object.entries(game.players || {}).find(([,v])=>v.name===p.name)?.[0] || '';
             teamSelector = `<select class="team-assign-select" onchange="assignTeam('${playerId}', this.value)"><option value="">- 미배정 -</option>${opts}</select>`;
+        }
+        
+        // 강퇴 버튼 (대기실 상태일 때만)
+        let kickBtn = '';
+        if (game.status === 'waiting' && playerId) {
+            kickBtn = `<button class="btn-kick" onclick="kickPlayer('${playerId}')" style="margin-left: 8px; font-size: 11px; color: white; background: #ff4757; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer;">강퇴</button>`;
         }
 
         card.innerHTML = `
-            <div class="player-name">${teamColor ? teamColor + ' ' : ''}${escapeHtml(p.name)}</div>
+            <div class="player-name" style="display:flex; justify-content:center; align-items:center;">
+                ${teamColor ? teamColor + ' ' : ''}${escapeHtml(p.name)}
+                ${kickBtn}
+            </div>
             <div class="player-stage ${cleared ? 'cleared' : ''}">${cleared ? `🔥 보너스 (+${p.bonusPoints || 0}점)` : `스테이지 ${p.currentStage}/${totalStages}`}</div>
             ${teamSelector}`;
         grid.appendChild(card);
@@ -338,8 +360,19 @@ function renderDashboard(game) {
 }
 
 function assignTeam(playerId, teamId) {
-    if (!currentGameCode || !playerId) return;
+    if (!currentGameCode) return;
     updatePlayerData(currentGameCode, playerId, { team: teamId });
+}
+
+function kickPlayer(playerId) {
+    if (!currentGameCode) return;
+    if (!confirm('정말 이 학생을 강퇴하시겠습니까?')) return;
+    
+    removePlayerData(currentGameCode, playerId).then(() => {
+        // UI 갱신은 listenGame에 의해 자동으로 이루어짐
+    }).catch(err => {
+        alert('강퇴 처리 중 오류가 발생했습니다.');
+    });
 }
 
 function startGame() {

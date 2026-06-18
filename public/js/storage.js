@@ -61,6 +61,11 @@ function updatePlayerData(code, playerId, data) {
     db.ref('games/' + code + '/players/' + playerId).update(data);
 }
 
+function removePlayerData(code, playerId) {
+    if (!dbReady) return Promise.resolve();
+    return db.ref('games/' + code + '/players/' + playerId).remove();
+}
+
 // ---- Teacher CRUD ----
 async function saveTeacher(teacherCode, data) {
     if (!dbReady) { localStorage.setItem('teacher_' + teacherCode, JSON.stringify(data)); return; }
