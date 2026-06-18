@@ -12,6 +12,8 @@ let myStageCorrectCount = 0;
 let myBonusPoints = 0;
 let myBonusCorrectCount = 0;
 let myConsecutiveWrong = 0;
+let myStageAskedQuestions = []; // 현재 스테이지에서 출제된 문제 추적
+let myGlobalAskedQuestions = []; // 게임 전체에서 한 번이라도 출제된 문제 추적
 let answerHistory = []; // { stage, questionText, studentAnswer, correctAnswer, correct }
 
 // 정답 형태 힌트 생성 - 특수 구조가 있는 답만 (예: "행정부 -> 국회" → "○○○ -> ○○")
@@ -71,6 +73,8 @@ async function joinGame() {
     myBonusPoints = 0;
     myBonusCorrectCount = 0;
     myConsecutiveWrong = 0;
+    myStageAskedQuestions = [];
+    myGlobalAskedQuestions = [];
 
     const playerData = {
         name, team: selectedTeam || '', currentStage: 1,
@@ -147,6 +151,36 @@ function updateStageMap() {
     }
 }
 
+function getUniqueRandomQuestion(questions) {
+    if (!questions || questions.length === 0) return null;
+    
+    // 출제되지 않은 문제들만 필터링
+    let pool = questions.filter(q => !myStageAskedQuestions.includes(q.text));
+    
+    // 만약 모든 문제가 다 한 번씩 나왔다면 (풀이 고갈) 풀 초기화
+    if (pool.length === 0) {
+        myStageAskedQuestions = [];
+        pool = questions;
+    }
+    
+    // 풀이 1개면 그거 반환
+    if (pool.length === 1) {
+        myStageAskedQuestions.push(pool[0].text);
+        return pool[0];
+    }
+    
+    // 풀이 여러 개면 이전 직전 문제와 안 겹치게 뽑기 (만약 풀에 있는게 모두 이전 문제랑 다르면 그냥 뽑음)
+    let q;
+    let attempts = 0;
+    do {
+        q = pool[Math.floor(Math.random() * pool.length)];
+        attempts++;
+    } while (q.text === window._lastQuestionText && attempts < 10);
+    
+    myStageAskedQuestions.push(q.text);
+    return q;
+}
+
 function loadStageQuestion(game) {
     if (!game) game = currentGameData;
     if (!game) return;
@@ -157,13 +191,29 @@ function loadStageQuestion(game) {
         document.getElementById('current-stage-label').textContent = `🔥 보너스 모드`;
         document.getElementById('stage-total-label').textContent = `(+${myBonusPoints}점)`;
         const allQuestions = game.stages.flatMap(s => s);
-        q = allQuestions[Math.floor(Math.random() * allQuestions.length)];
+        
+        // 1. 가급적 OX 문제 피하기
+        let nonOx = allQuestions.filter(qst => qst.type !== 'ox');
+        let basePool = nonOx.length > 0 ? nonOx : allQuestions;
+        
+        // 2. 가급적 정규 라운드에서 안 만났던 문제 우선
+        let unseen = basePool.filter(qst => !myGlobalAskedQuestions.includes(qst.text));
+        let targetPool = unseen.length > 0 ? unseen : basePool;
+        
+        q = getUniqueRandomQuestion(targetPool);
     } else {
         const stageQuestions = game.stages[myCurrentStage - 1];
-        q = stageQuestions[Math.floor(Math.random() * stageQuestions.length)];
+        q = getUniqueRandomQuestion(stageQuestions);
         document.getElementById('current-stage-label').textContent = `스테이지 ${myCurrentStage}`;
         document.getElementById('stage-total-label').textContent = `(${myStageCorrectCount}/3)`;
     }
+    
+    // 출제 기록 전체 추적
+    if (!myGlobalAskedQuestions.includes(q.text)) {
+        myGlobalAskedQuestions.push(q.text);
+    }
+    
+    window._lastQuestionText = q.text;
     document.getElementById('q-text').textContent = q.text;
     selectedChoice = -1;
 
@@ -382,6 +432,7 @@ function showFeedback(correct) {
             if (myStageCorrectCount >= 3) {
                 myStageCorrectCount = 0;
                 myCurrentStage++;
+                myStageAskedQuestions = [];
                 content.className = 'feedback-content fb-correct';
                 content.innerHTML = '<div class="fb-icon">🎉</div><div class="fb-text">정답!</div><div class="fb-sub">다음 스테이지로!</div>';
             } else {
@@ -401,6 +452,7 @@ function showFeedback(correct) {
                 myCurrentStage--;
                 myStageCorrectCount = 0;
                 myBonusCorrectCount = 0;
+                myStageAskedQuestions = [];
                 content.innerHTML = '<div class="fb-icon">😢</div><div class="fb-text">오답! (2회 누적)</div><div class="fb-sub">1단계 뒤로 강등...</div>';
             } else {
                 myStageCorrectCount = 0;
