@@ -312,7 +312,7 @@ function renderDashboard(game) {
 
         card.innerHTML = `
             <div class="player-name">${teamColor ? teamColor + ' ' : ''}${escapeHtml(p.name)}</div>
-            <div class="player-stage ${cleared ? 'cleared' : ''}">${cleared ? '🏆 클리어!' : `스테이지 ${p.currentStage}/${totalStages}`}</div>
+            <div class="player-stage ${cleared ? 'cleared' : ''}">${cleared ? `🔥 보너스 (+${p.bonusPoints || 0}점)` : `스테이지 ${p.currentStage}/${totalStages}`}</div>
             ${teamSelector}`;
         grid.appendChild(card);
     });
@@ -323,7 +323,7 @@ function renderDashboard(game) {
         scoreEl.classList.remove('hidden');
         scoreEl.innerHTML = teams.map(t => {
             const score = players.filter(p => p.team === t.id)
-                .reduce((sum, p) => sum + Math.min(p.currentStage - 1, totalStages), 0);
+                .reduce((sum, p) => sum + Math.min(p.currentStage - 1, totalStages) + (p.bonusPoints || 0), 0);
             const count = players.filter(p => p.team === t.id).length;
             return `<div class="team-score-card"><div class="team-score-name">${t.emoji} ${escapeHtml(t.name)}</div><div class="team-score-val">${score}점</div><div class="team-score-count">${count}명</div></div>`;
         }).join('');
@@ -366,21 +366,44 @@ function endGame() {
 function showResults(game) {
     const players = Object.values(game.players || {});
     const totalStages = game.stages.length;
+    const teams = game.teams || [];
     document.getElementById('game-progress').classList.add('hidden');
     document.getElementById('btn-end-game').classList.add('hidden');
     document.getElementById('game-results').classList.remove('hidden');
     let html = '';
-    if (game.teamMode) {
-        let aS=0,bS=0,aC=0,bC=0;
-        players.forEach(p => { const c=p.currentStage>totalStages; if(p.team==='A'){aS+=Math.min(p.currentStage-1,totalStages);if(c)aC++;}else{bS+=Math.min(p.currentStage-1,totalStages);if(c)bC++;} });
-        const w = aS>bS?'A팀 승리! 🎉':aS<bS?'B팀 승리! 🎉':'무승부! 🤝';
+    
+    if (game.teamMode && teams.length > 0) {
+        let bestTeam = null;
+        let bestScore = -1;
+        let isTie = false;
+        
+        const teamScores = teams.map(t => {
+            const score = players.filter(p => p.team === t.id).reduce((sum, p) => sum + Math.min(p.currentStage - 1, totalStages) + (p.bonusPoints || 0), 0);
+            if (score > bestScore) { bestScore = score; bestTeam = t; isTie = false; }
+            else if (score === bestScore) { isTie = true; }
+            return { ...t, score };
+        });
+        
+        const w = isTie ? '무승부! 🤝' : `${bestTeam.emoji} ${bestTeam.name} 승리! 🎉`;
         html += `<div style="text-align:center;font-size:28px;font-weight:800;margin-bottom:20px;color:#ffd700">${w}</div>`;
+        html += `<div style="display:flex;justify-content:center;gap:12px;margin-bottom:20px;">`;
+        teamScores.forEach(ts => {
+            html += `<div style="background:rgba(255,255,255,.1);padding:10px 16px;border-radius:12px;">${ts.emoji} ${ts.name}: <strong>${ts.score}점</strong></div>`;
+        });
+        html += `</div>`;
     }
-    const sorted = [...players].sort((a,b)=>b.currentStage-a.currentStage||(a.clearedAt||Infinity)-(b.clearedAt||Infinity));
-    html += `<table class="results-table"><thead><tr><th>순위</th><th>이름</th>${game.teamMode?'<th>팀</th>':''}<th>진행</th><th>오답</th></tr></thead><tbody>`;
+    
+    const sorted = [...players].sort((a,b)=>
+        ((b.currentStage - 1) + (b.bonusPoints || 0)) - ((a.currentStage - 1) + (a.bonusPoints || 0)) || 
+        (a.clearedAt||Infinity)-(b.clearedAt||Infinity)
+    );
+    html += `<table class="results-table"><thead><tr><th>순위</th><th>이름</th>${game.teamMode?'<th>팀</th>':''}<th>진행 / 점수</th><th>오답</th></tr></thead><tbody>`;
     sorted.forEach((p,i) => {
         const c = p.currentStage > totalStages;
-        html += `<tr${c?' class="result-winner"':''}><td>${i+1}</td><td>${escapeHtml(p.name)}</td>${game.teamMode?`<td>${p.team==='A'?'🔴':'🔵'}</td>`:''}<td>${c?'🏆':''+Math.max(0,p.currentStage-1)+'/'+totalStages}</td><td>${p.wrongCount||0}</td></tr>`;
+        const pts = Math.min(p.currentStage-1, totalStages) + (p.bonusPoints || 0);
+        const teamObj = teams.find(t => t.id === p.team);
+        const teamStr = teamObj ? teamObj.emoji : '';
+        html += `<tr${c?' class="result-winner"':''}><td>${i+1}</td><td>${escapeHtml(p.name)}</td>${game.teamMode?`<td>${teamStr}</td>`:''}<td>${c?`🔥 ${pts}점`:`${Math.max(0,p.currentStage-1)}/${totalStages}`}</td><td>${p.wrongCount||0}</td></tr>`;
     });
     html += '</tbody></table>';
     document.getElementById('results-content').innerHTML = html;

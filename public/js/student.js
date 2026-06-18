@@ -8,6 +8,10 @@ let selectedChoice = -1;
 let selectedTeam = null;
 let studentTimerInterval = null;
 let currentGameData = null;
+let myStageCorrectCount = 0;
+let myBonusPoints = 0;
+let myBonusCorrectCount = 0;
+let myConsecutiveWrong = 0;
 let answerHistory = []; // { stage, questionText, studentAnswer, correctAnswer, correct }
 
 // 정답 형태 힌트 생성 - 특수 구조가 있는 답만 (예: "행정부 -> 국회" → "○○○ -> ○○")
@@ -63,10 +67,14 @@ async function joinGame() {
     myPlayerId = 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
     myCurrentStage = 1;
     myWrongCount = 0;
+    myStageCorrectCount = 0;
+    myBonusPoints = 0;
+    myBonusCorrectCount = 0;
+    myConsecutiveWrong = 0;
 
     const playerData = {
         name, team: selectedTeam || '', currentStage: 1,
-        wrongCount: 0, joinedAt: Date.now(), clearedAt: null
+        wrongCount: 0, bonusPoints: 0, joinedAt: Date.now(), clearedAt: null
     };
     updatePlayerData(code, myPlayerId, playerData);
 
@@ -143,11 +151,19 @@ function loadStageQuestion(game) {
     if (!game) game = currentGameData;
     if (!game) return;
     const total = game.stages.length;
-    if (myCurrentStage > total) { showStudentComplete(game); return; }
-
-    const stageQuestions = game.stages[myCurrentStage - 1];
-    const q = stageQuestions[Math.floor(Math.random() * stageQuestions.length)];
-    document.getElementById('current-stage-label').textContent = `스테이지 ${myCurrentStage}`;
+    
+    let q;
+    if (myCurrentStage > total) {
+        document.getElementById('current-stage-label').textContent = `🔥 보너스 모드`;
+        document.getElementById('stage-total-label').textContent = `(+${myBonusPoints}점)`;
+        const allQuestions = game.stages.flatMap(s => s);
+        q = allQuestions[Math.floor(Math.random() * allQuestions.length)];
+    } else {
+        const stageQuestions = game.stages[myCurrentStage - 1];
+        q = stageQuestions[Math.floor(Math.random() * stageQuestions.length)];
+        document.getElementById('current-stage-label').textContent = `스테이지 ${myCurrentStage}`;
+        document.getElementById('stage-total-label').textContent = `(${myStageCorrectCount}/3)`;
+    }
     document.getElementById('q-text').textContent = q.text;
     selectedChoice = -1;
 
@@ -346,32 +362,61 @@ function showFeedback(correct) {
     const content = document.getElementById('feedback-content');
     overlay.classList.remove('hidden');
 
+    const totalStages = currentGameData ? currentGameData.stages.length : 0;
+    const isBonusMode = myCurrentStage > totalStages;
+
     if (correct) {
-        content.className = 'feedback-content fb-correct';
-        content.innerHTML = '<div class="fb-icon">🎉</div><div class="fb-text">정답!</div><div class="fb-sub">다음 스테이지로!</div>';
-        myCurrentStage++;
-        updatePlayerData(myGameCode, myPlayerId, { currentStage: myCurrentStage });
-        setTimeout(() => {
-            overlay.classList.add('hidden');
-            updateStageMap();
-            if (currentGameData) loadStageQuestion(currentGameData);
-        }, 1500);
+        if (isBonusMode) {
+            myBonusCorrectCount++;
+            if (myBonusCorrectCount >= 3) {
+                myBonusCorrectCount = 0;
+                myBonusPoints++;
+                content.className = 'feedback-content fb-correct';
+                content.innerHTML = '<div class="fb-icon">🔥</div><div class="fb-text">보너스 득점!</div><div class="fb-sub">+1점 획득!</div>';
+            } else {
+                content.className = 'feedback-content fb-correct';
+                content.innerHTML = `<div class="fb-icon">🎉</div><div class="fb-text">정답!</div><div class="fb-sub">보너스 진행도: ${myBonusCorrectCount}/3</div>`;
+            }
+        } else {
+            myStageCorrectCount++;
+            if (myStageCorrectCount >= 3) {
+                myStageCorrectCount = 0;
+                myCurrentStage++;
+                content.className = 'feedback-content fb-correct';
+                content.innerHTML = '<div class="fb-icon">🎉</div><div class="fb-text">정답!</div><div class="fb-sub">다음 스테이지로!</div>';
+            } else {
+                content.className = 'feedback-content fb-correct';
+                content.innerHTML = `<div class="fb-icon">🎉</div><div class="fb-text">정답!</div><div class="fb-sub">진행도: ${myStageCorrectCount}/3</div>`;
+            }
+        }
+        updatePlayerData(myGameCode, myPlayerId, { currentStage: myCurrentStage, bonusPoints: myBonusPoints });
     } else {
         myWrongCount++;
+        myConsecutiveWrong++;
         content.className = 'feedback-content fb-wrong';
-        if (myCurrentStage > 1) {
-            myCurrentStage = Math.max(1, myCurrentStage - 1);
-            content.innerHTML = '<div class="fb-icon">😢</div><div class="fb-text">오답!</div><div class="fb-sub">1단계 뒤로...</div>';
+        
+        if (myConsecutiveWrong >= 2) {
+            myConsecutiveWrong = 0;
+            if (myCurrentStage > 1) {
+                myCurrentStage--;
+                myStageCorrectCount = 0;
+                myBonusCorrectCount = 0;
+                content.innerHTML = '<div class="fb-icon">😢</div><div class="fb-text">오답! (2회 누적)</div><div class="fb-sub">1단계 뒤로 강등...</div>';
+            } else {
+                myStageCorrectCount = 0;
+                content.innerHTML = '<div class="fb-icon">😢</div><div class="fb-text">오답! (2회 누적)</div><div class="fb-sub">여기가 첫 단계입니다</div>';
+            }
         } else {
-            content.innerHTML = '<div class="fb-icon">😢</div><div class="fb-text">오답!</div><div class="fb-sub">다시 도전!</div>';
+            content.innerHTML = '<div class="fb-icon">⚠️</div><div class="fb-text">오답!</div><div class="fb-sub">한 번 더 틀리면 강등됩니다!</div>';
         }
-        updatePlayerData(myGameCode, myPlayerId, { currentStage: myCurrentStage, wrongCount: myWrongCount });
-        setTimeout(() => {
-            overlay.classList.add('hidden');
-            updateStageMap();
-            if (currentGameData) loadStageQuestion(currentGameData);
-        }, 1500);
+        updatePlayerData(myGameCode, myPlayerId, { currentStage: myCurrentStage, wrongCount: myWrongCount, bonusPoints: myBonusPoints });
     }
+
+    setTimeout(() => {
+        overlay.classList.add('hidden');
+        updateStageMap();
+        if (currentGameData) loadStageQuestion(currentGameData);
+    }, 1500);
 }
 
 function startStudentTimer(game) {
@@ -396,11 +441,14 @@ function showStudentComplete(game) {
     const el = document.getElementById('complete-content');
 
     // 기본 결과
+    const pts = Math.min(myCurrentStage - 1, total) + myBonusPoints;
     const resultHtml = cleared
-        ? `<div class="trophy">🏆</div><h2>축하합니다!</h2><p class="clear-time">모든 스테이지 클리어!</p><p class="clear-stats">오답 수: ${myWrongCount}</p>`
+        ? `<div class="trophy">🔥</div><h2>보너스 모드 종료!</h2><p class="clear-time">최종 점수: ${pts}점</p><p class="clear-stats">오답 수: ${myWrongCount}</p>`
         : `<div class="trophy">⏰</div><h2>시간 종료!</h2><p class="clear-time">스테이지 ${myCurrentStage-1}/${total} 도달</p><p class="clear-stats">오답 수: ${myWrongCount}</p>`;
 
-    if (cleared) updatePlayerData(myGameCode, myPlayerId, { clearedAt: Date.now() });
+    if (cleared && !currentGameData?.players?.[myPlayerId]?.clearedAt) {
+        updatePlayerData(myGameCode, myPlayerId, { clearedAt: Date.now() });
+    }
 
     // 봅습 이력 (answerHistory가 있을 경우)
     let reviewHtml = '';
