@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>고고전진! 학습 게임</title>
+    <meta name="description" content="교실에서 태블릿으로 즐기는 고고전진 학습 놀이 시스템">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- ============ LANDING PAGE ============ -->
+    <div id="page-landing" class="page active">
+        <div class="stars-bg"></div>
+        <div class="landing-container">
+            <div class="logo-area">
+                <div class="logo-icon">🚀</div>
+                <h1 class="logo-title">고고전진!</h1>
+                <p class="logo-subtitle">학습 게임</p>
+            </div>
+            <div class="landing-buttons">
+                <button id="btn-teacher" class="btn-landing btn-teacher" onclick="showPage('page-teacher-login')">
+                    <span class="btn-icon">👩‍🏫</span>
+                    <span class="btn-text">
+                        <strong>선생님</strong>
+                        <small>게임 만들기</small>
+                    </span>
+                </button>
+                <button id="btn-student" class="btn-landing btn-student" onclick="showPage('page-student-join')">
+                    <span class="btn-icon">🎮</span>
+                    <span class="btn-text">
+                        <strong>학생</strong>
+                        <small>게임 참여하기</small>
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ TEACHER LOGIN PAGE ============ -->
+    <div id="page-teacher-login" class="page">
+        <div class="stars-bg"></div>
+        <div class="student-join-container">
+            <button class="btn-back btn-back-light" onclick="showPage('page-landing')">← 뒤로</button>
+            <div class="join-box" style="max-width:450px">
+                <h2>👩‍🏫 선생님 입장</h2>
+                <div class="teacher-login-tabs">
+                    <button class="tab-btn active" onclick="switchLoginTab('existing')">기존 코드 입력</button>
+                    <button class="tab-btn" onclick="switchLoginTab('new')">새로 등록</button>
+                </div>
+                <div id="tab-existing" class="tab-content">
+                    <div class="form-group">
+                        <label for="teacher-code-input">교사 코드</label>
+                        <input type="text" id="teacher-code-input" placeholder="교사 코드 입력 (예: T3K5M2)" maxlength="6" class="input-big" autocomplete="off" style="text-transform:uppercase">
+                    </div>
+                    <button class="btn-primary" onclick="teacherLogin()">입장하기</button>
+                </div>
+                <div id="tab-new" class="tab-content hidden">
+                    <div class="form-group">
+                        <label for="teacher-name-input">선생님 이름</label>
+                        <input type="text" id="teacher-name-input" placeholder="이름을 입력하세요" maxlength="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="teacher-school-input">학교명</label>
+                        <input type="text" id="teacher-school-input" placeholder="학교명 (선택)" maxlength="20">
+                    </div>
+                    <button class="btn-primary" onclick="teacherRegister()">등록 & 코드 발급</button>
+                </div>
+                <div id="teacher-code-result" class="teacher-code-result hidden">
+                    <p>나의 교사 코드:</p>
+                    <div class="teacher-code-display" id="my-teacher-code">------</div>
+                    <p class="small-hint">이 코드를 꼭 기억해주세요! 다음에 이 코드로 로그인합니다.</p>
+                    <button class="btn-primary" onclick="goToTeacherHome()" style="margin-top:16px">확인, 시작하기</button>
+                </div>
+                <button onclick="openHelp('teacher')" style="margin-top:16px;width:100%;background:none;border:1px solid rgba(123,97,255,.2);color:#a78bfa;font-size:13px;padding:9px;border-radius:10px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">📖 선생님 사용 설명서 보기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ TEACHER HOME (문제은행 + 게임 만들기) ============ -->
+    <div id="page-teacher-home" class="page">
+        <div class="page-header">
+            <button class="btn-back" onclick="showPage('page-landing')">← 나가기</button>
+            <h2 id="teacher-home-title">👩‍🏫 선생님 홈</h2>
+            <span class="teacher-code-badge" id="teacher-badge">T-----</span>
+        </div>
+        <div class="teacher-home-container">
+            <div class="teacher-home-tabs">
+                <button class="home-tab active" onclick="switchHomeTab('create')" id="home-tab-create">🎮 게임 만들기</button>
+                <button class="home-tab" onclick="switchHomeTab('library')" id="home-tab-library">📚 문제 라이브러리</button>
+                <button class="home-tab" onclick="switchHomeTab('mysets')" id="home-tab-mysets">📂 내 문제함</button>
+            </div>
+
+            <!-- TAB: 게임 만들기 -->
+            <div id="home-content-create" class="home-content">
+                <div class="teacher-setup-container">
+                    <div class="setup-section">
+                        <h3>게임 정보</h3>
+                        <div class="form-group">
+                            <label for="game-title">게임 제목</label>
+                            <input type="text" id="game-title" placeholder="예: 3단원 복습 고고전진!" maxlength="30">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="game-timer">제한 시간 (분)</label>
+                                <input type="number" id="game-timer" value="10" min="1" max="60">
+                            </div>
+                            <div class="form-group">
+                                <label>팀 대결 모드</label>
+                                <div class="toggle-container">
+                                    <input type="checkbox" id="team-mode" class="toggle-input" onchange="toggleTeamSetup()">
+                                    <label for="team-mode" class="toggle-label">
+                                        <span class="toggle-text-off">개인전</span>
+                                        <span class="toggle-text-on">팀 대결</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="team-setup-area" style="display:none;margin-top:12px;padding:14px;border-radius:12px;background:rgba(123,97,255,.07);border:1px solid rgba(123,97,255,.2);">
+                            <div class="form-row" style="align-items:center;margin-bottom:12px;">
+                                <label style="margin:0;white-space:nowrap;">팀 수:</label>
+                                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                    <button class="btn-team-count active" onclick="setTeamCount(2)" id="tc-2">2팀</button>
+                                    <button class="btn-team-count" onclick="setTeamCount(3)" id="tc-3">3팀</button>
+                                    <button class="btn-team-count" onclick="setTeamCount(4)" id="tc-4">4팀</button>
+                                    <button class="btn-team-count" onclick="setTeamCount(5)" id="tc-5">5팀</button>
+                                    <button class="btn-team-count" onclick="setTeamCount(6)" id="tc-6">6팀</button>
+                                </div>
+                            </div>
+                            <div id="team-names-area" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+                        </div>
+                        <div style="margin-top:16px;padding:14px;border-radius:12px;background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.15);">
+                            <div class="form-group">
+                                <label for="ai-api-key">🤖 AI 채점 (선택사항)</label>
+                                <div id="api-key-saved-display" style="display:none;padding:10px 14px;border-radius:10px;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);color:#00d4ff;font-size:14px;margin-bottom:8px;">
+                                    ✅ API 키 저장됨: ●●●●●●●●
+                                    <button onclick="clearApiKey()" style="margin-left:12px;padding:4px 12px;border-radius:8px;border:1px solid rgba(255,0,80,.3);background:rgba(255,0,80,.1);color:#ff006e;font-size:12px;cursor:pointer;">삭제</button>
+                                </div>
+                                <div id="api-key-input-area" style="display:flex;gap:8px;align-items:center;">
+                                    <input type="password" id="ai-api-key" placeholder="Gemini API 키 붙여넣기" autocomplete="off"
+                                           style="flex:1;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#e8e8f0;font-size:14px;">
+                                    <button onclick="saveApiKey()" style="padding:10px 18px;border-radius:10px;border:1px solid rgba(0,212,255,.3);background:linear-gradient(135deg,rgba(0,212,255,.15),rgba(123,97,255,.15));color:#00d4ff;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;">💾 저장</button>
+                                </div>
+                                <p id="api-key-status" style="font-size:12px;color:#888;margin-top:8px;">🔒 API 키는 이 PC에만 저장됩니다 (서버 전송 없음)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setup-section">
+                        <div class="section-header">
+                            <h3>🏁 스테이지 & 문제</h3>
+                            <div class="header-buttons">
+                                <button class="btn-paste-import" onclick="openPasteModal()">📋 한글에서 붙여넣기</button>
+                                <button class="btn-add-stage" onclick="addStage()">+ 스테이지 추가</button>
+                            </div>
+                        </div>
+                        <div id="stages-container"></div>
+                    </div>
+
+                    <div class="setup-actions">
+                        <div class="setup-actions-row">
+                            <button class="btn-secondary" onclick="saveAsQuestionSet()" id="btn-save-set">💾 문제 세트 저장</button>
+                            <button id="btn-create-game" class="btn-primary btn-create" onclick="createGame()">🚀 게임 생성하기</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: 문제 라이브러리 (공유) -->
+            <div id="home-content-library" class="home-content hidden">
+                <div class="library-container">
+                    <div class="library-header">
+                        <h3>📚 공유 문제 라이브러리</h3>
+                        <p class="library-desc">다른 선생님이 공유한 문제 세트를 가져와 바로 사용하세요!</p>
+                    </div>
+                    <div class="library-filters">
+                        <select id="filter-grade" onchange="loadLibrary()">
+                            <option value="">전체 학년</option>
+                            <option value="1">1학년</option>
+                            <option value="2">2학년</option>
+                            <option value="3">3학년</option>
+                            <option value="4">4학년</option>
+                            <option value="5">5학년</option>
+                            <option value="6">6학년</option>
+                        </select>
+                        <select id="filter-subject" onchange="loadLibrary()">
+                            <option value="">전체 과목</option>
+                            <option value="국어">국어</option>
+                            <option value="수학">수학</option>
+                            <option value="사회">사회</option>
+                            <option value="과학">과학</option>
+                            <option value="영어">영어</option>
+                            <option value="기타">기타</option>
+                        </select>
+                    </div>
+                    <div id="library-list" class="library-list">
+                        <div class="loading-msg">불러오는 중...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: 내 문제함 -->
+            <div id="home-content-mysets" class="home-content hidden">
+                <div class="library-container">
+                    <div class="library-header">
+                        <h3>📂 내 문제함</h3>
+                        <p class="library-desc">내가 저장한 문제 세트입니다.</p>
+                    </div>
+                    <div id="mysets-list" class="library-list">
+                        <div class="loading-msg">불러오는 중...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ TEACHER DASHBOARD PAGE ============ -->
+    <div id="page-teacher-dashboard" class="page">
+        <div class="page-header">
+            <button class="btn-back" onclick="confirmLeave()">← 나가기</button>
+            <h2>📊 게임 대시보드</h2>
+        </div>
+        <div class="dashboard-container">
+            <div class="game-info-bar">
+                <div class="info-item">
+                    <span class="info-label">게임 코드</span>
+                    <span class="info-value" id="dash-game-code">----</span>
+                    <button class="btn-copy" onclick="copyGameCode()">📋</button>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">참여</span>
+                    <span class="info-value" id="dash-players">0명</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">남은 시간</span>
+                    <span class="info-value" id="dash-timer">--:--</span>
+                </div>
+            </div>
+            <div id="share-area" class="share-area">
+                <div class="share-info">
+                    <p>학생들에게 아래 게임 코드를 알려주세요!</p>
+                    <div class="game-code-display" id="game-code-big">----</div>
+                    <button id="btn-start-game" class="btn-primary" onclick="startGame()">🎮 게임 시작!</button>
+                </div>
+            </div>
+            <div id="game-progress" class="game-progress hidden">
+                <div class="progress-header">
+                    <div id="team-scores" class="team-scores hidden">
+                        <div class="team-score team-a">
+                            <span class="team-name">🔴 A팀</span>
+                            <span class="team-points" id="team-a-score">0</span>
+                        </div>
+                        <span class="vs">VS</span>
+                        <div class="team-score team-b">
+                            <span class="team-name">🔵 B팀</span>
+                            <span class="team-points" id="team-b-score">0</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="players-grid" class="players-grid"></div>
+            </div>
+            <div id="game-results" class="game-results hidden">
+                <h3>🏆 게임 결과</h3>
+                <div id="results-content"></div>
+            </div>
+            <div class="dashboard-actions">
+                <button id="btn-end-game" class="btn-danger hidden" onclick="endGame()">⏹ 게임 종료</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ STUDENT JOIN PAGE ============ -->
+    <div id="page-student-join" class="page">
+        <div class="stars-bg"></div>
+        <div class="student-join-container">
+            <button class="btn-back btn-back-light" onclick="showPage('page-landing')">← 뒤로</button>
+            <div class="join-box">
+                <h2>🎮 게임 참여</h2>
+                <div class="form-group">
+                    <label for="join-code">게임 코드</label>
+                    <input type="text" id="join-code" placeholder="게임 코드 입력" maxlength="6" class="input-big" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="join-name">이름</label>
+                    <input type="text" id="join-name" placeholder="이름을 입력하세요" maxlength="10" class="input-big">
+                </div>
+                <div id="team-select-area" class="form-group hidden">
+                    <label>팀 선택</label>
+                    <div id="team-select-buttons" class="team-select-buttons"></div>
+                </div>
+                <button id="btn-join-game" class="btn-primary" onclick="joinGame()">입장하기</button>
+                <button onclick="openHelp('student')" style="margin-top:10px;width:100%;background:none;border:1px solid rgba(0,212,255,.2);color:#00d4ff;font-size:13px;padding:9px;border-radius:10px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">📖 학생 사용 설명서 보기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ STUDENT WAITING PAGE ============ -->
+    <div id="page-student-waiting" class="page">
+        <div class="stars-bg"></div>
+        <div class="waiting-container">
+            <div class="waiting-content">
+                <div class="waiting-icon">🚀</div>
+                <h2>준비 완료!</h2>
+                <p id="waiting-name" class="waiting-name"></p>
+                <p id="waiting-team" class="waiting-team"></p>
+                <div class="waiting-dots">
+                    <span>.</span><span>.</span><span>.</span>
+                </div>
+                <p class="waiting-msg">선생님이 게임을 시작할 때까지 기다려주세요</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ STUDENT GAME PAGE ============ -->
+    <div id="page-student-game" class="page">
+        <div class="game-top-bar">
+            <div class="stage-indicator">
+                <span id="current-stage-label">스테이지 1</span>
+                <span id="stage-total-label">/ 6</span>
+            </div>
+            <div class="game-timer" id="student-timer">10:00</div>
+        </div>
+        <div class="stage-map-container">
+            <div id="stage-map" class="stage-map"></div>
+        </div>
+        <div id="question-area" class="question-area">
+            <div class="question-card">
+                <div class="question-type-badge" id="q-type-badge">객관식</div>
+                <div class="question-text" id="q-text">문제가 여기에 표시됩니다</div>
+                <div id="choices-area" class="choices-area">
+                    <button class="choice-btn" data-idx="0" onclick="selectChoice(0)"></button>
+                    <button class="choice-btn" data-idx="1" onclick="selectChoice(1)"></button>
+                    <button class="choice-btn" data-idx="2" onclick="selectChoice(2)"></button>
+                    <button class="choice-btn" data-idx="3" onclick="selectChoice(3)"></button>
+                </div>
+                <div id="short-answer-area" class="short-answer-area hidden">
+                    <input type="text" id="short-answer-input" placeholder="정답을 입력하세요" class="input-answer" autocomplete="off">
+                </div>
+                <button id="btn-submit-answer" class="btn-primary btn-submit" onclick="submitAnswer()">정답 제출!</button>
+            </div>
+        </div>
+        <div id="feedback-overlay" class="feedback-overlay hidden">
+            <div id="feedback-content" class="feedback-content"></div>
+        </div>
+    </div>
+
+    <!-- ============ STUDENT COMPLETE PAGE ============ -->
+    <div id="page-student-complete" class="page">
+        <div class="stars-bg"></div>
+        <div class="complete-container">
+            <div id="complete-content" class="complete-content"></div>
+        </div>
+    </div>
+
+    <!-- ============ PASTE IMPORT MODAL ============ -->
+    <div id="paste-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>📋 한글에서 문제 붙여넣기</h3>
+                <button class="modal-close" onclick="closePasteModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="paste-instructions">
+                    <p><strong>사용법:</strong></p>
+                    <ol>
+                        <li>한글(HWP)에서 문제 표를 <strong>전체 선택</strong> (Ctrl+A)</li>
+                        <li><strong>복사</strong> (Ctrl+C)</li>
+                        <li>아래 입력칸에 <strong>붙여넣기</strong> (Ctrl+V)</li>
+                    </ol>
+                    <p class="paste-hint">💡 &lt;1단계&gt;, &lt;2단계&gt; 형식의 스테이지 구분과 문제|정답 형식을 자동 인식합니다.</p>
+                </div>
+                <textarea id="paste-textarea" class="paste-textarea" placeholder="여기에 한글 파일 내용을 붙여넣기 하세요 (Ctrl+V)" rows="10"></textarea>
+                <div id="paste-preview" class="paste-preview hidden">
+                    <h4>📝 인식 결과 미리보기</h4>
+                    <div id="paste-preview-content"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closePasteModal()">취소</button>
+                <button class="btn-primary" id="btn-apply-paste" onclick="applyParsedQuestions()" disabled>적용하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ SAVE QUESTION SET MODAL ============ -->
+    <div id="save-set-modal" class="modal-overlay hidden">
+        <div class="modal-box" style="max-width:500px">
+            <div class="modal-header">
+                <h3>💾 문제 세트 저장 & 공유</h3>
+                <button class="modal-close" onclick="closeSaveSetModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="set-title">제목</label>
+                    <input type="text" id="set-title" placeholder="예: 6학년 사회 2단원 선거" maxlength="40">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="set-grade">학년</label>
+                        <select id="set-grade">
+                            <option value="1">1학년</option>
+                            <option value="2">2학년</option>
+                            <option value="3">3학년</option>
+                            <option value="4">4학년</option>
+                            <option value="5">5학년</option>
+                            <option value="6" selected>6학년</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="set-subject">과목</label>
+                        <select id="set-subject">
+                            <option value="국어">국어</option>
+                            <option value="수학">수학</option>
+                            <option value="사회" selected>사회</option>
+                            <option value="과학">과학</option>
+                            <option value="영어">영어</option>
+                            <option value="기타">기타</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="set-public" checked> 다른 선생님에게 공유하기
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeSaveSetModal()">취소</button>
+                <button class="btn-primary" onclick="confirmSaveQuestionSet()">저장하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canvas for particle effects -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- ============ HELP MODAL ============ -->
+    <div id="help-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;overflow-y:auto;padding:20px;">
+        <div style="max-width:620px;margin:0 auto;background:#1a1a2e;border-radius:20px;border:1px solid rgba(255,255,255,.1);overflow:hidden;">
+            <!-- 탭 헤더 -->
+            <div style="display:flex;border-bottom:1px solid rgba(255,255,255,.08);">
+                <button id="help-tab-teacher" onclick="switchHelpTab('teacher')" style="flex:1;padding:16px;background:rgba(123,97,255,.2);border:none;color:#a78bfa;font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">👩‍🏫 선생님 설명서</button>
+                <button id="help-tab-student" onclick="switchHelpTab('student')" style="flex:1;padding:16px;background:none;border:none;color:#666;font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">🎮 학생 설명서</button>
+                <button onclick="closeHelp()" style="padding:16px 20px;background:none;border:none;color:#666;font-size:20px;cursor:pointer;">✕</button>
+            </div>
+            <!-- 선생님 설명서 -->
+            <div id="help-teacher" style="padding:24px;">
+                <div class="help-section">
+                    <h3 class="help-title">🔑 1단계: 선생님 등록 / 로그인</h3>
+                    <ul class="help-list">
+                        <li>첫 방문 시 <strong>새로 등록</strong> → 이름과 학교 입력 → 교사 코드 발급</li>
+                        <li>이후 방문 시 <strong>기존 코드 입력</strong> → 발급받은 6자리 코드 입력</li>
+                        <li class="help-warn">⚠️ 교사 코드를 잃어버리면 복구가 불가합니다. 꼭 기억해두세요!</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h3 class="help-title">📝 2단계: 문제 만들기</h3>
+                    <ul class="help-list">
+                        <li><strong>게임 만들기</strong> 탭 → 게임 제목, 제한 시간 설정</li>
+                        <li>스테이지 추가 후 문제 입력 (객관식 / 주관식)</li>
+                        <li><strong>한글에서 붙여넣기</strong> 버튼으로 표 형식 문제 일괄 가져오기 가능</li>
+                        <li>팀 대결 모드 ON → 팀 수(2~6) 및 팀 이름 설정 가능</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h3 class="help-title">🚀 3단계: 게임 진행</h3>
+                    <ul class="help-list">
+                        <li>게임 코드를 학생에게 공유 → 학생들이 입장</li>
+                        <li>대시보드에서 학생 진행 상황 실시간 확인</li>
+                        <li>팀 대결 시 학생 카드의 드롭다운으로 팀 배정 가능</li>
+                        <li><strong>게임 시작</strong> 버튼을 눌러야 학생 화면이 시작됩니다</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h3 class="help-title">🤖 AI 채점 (선택사항)</h3>
+                    <ul class="help-list">
+                        <li>Gemini API 키 입력 시 주관식 유사 답안 자동 인정</li>
+                        <li>API 키는 이 PC에만 저장 (서버 전송 없음)</li>
+                        <li>선생님 대시보드가 열려 있는 동안 AI 채점 작동</li>
+                        <li>키 발급: <strong>aistudio.google.com/apikey</strong></li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h3 class="help-title">📚 문제 라이브러리</h3>
+                    <ul class="help-list">
+                        <li>만든 문제 세트를 다른 선생님과 공유 가능</li>
+                        <li>공개 라이브러리에서 다른 선생님 문제 가져오기 가능</li>
+                        <li>삭제는 만든 선생님만 가능, 수정은 복사본으로 저장</li>
+                    </ul>
+                </div>
+            </div>
+            <!-- 학생 설명서 -->
+            <div id="help-student" style="display:none;padding:24px;">
+                <div class="help-section">
+                    <h3 class="help-title">🎮 1단계: 게임 참여</h3>
+                    <ul class="help-list">
+                        <li>메인 화면에서 <strong>학생 → 게임 참여하기</strong> 클릭</li>
+                        <li>선생님이 알려준 <strong>게임 코드</strong> 입력</li>
+                        <li>내 <strong>이름</strong> 입력 → 팀 선택(팀 대결 시) → <strong>입장하기</strong></li>
+                        <li>선생님이 게임을 시작할 때까지 대기</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h3 class="help-title">🏁 2단계: 문제 풀기</h3>
+                    <ul class="help-list">
+                        <li>스테이지 순서대로 문제 풀기 (1 → 2 → 3 → ...)</li>
+                        <li><strong>객관식</strong>: 4개 보기 중 정답 선택 후 <strong>정답 제출!</strong></li>
+                        <li><strong>주관식</strong>: 답 입력 후 <strong>정답 제출!</strong> (오타 1~2개 허용)</li>
+                        <li>힌트(예: ○○→○○)가 표시되면 정답 형식 참고</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h3 class="help-title">⚡ 3단계: 정답 / 오답</h3>
+                    <ul class="help-list">
+                        <li>✅ <strong>정답</strong>: 다음 스테이지로 자동 이동</li>
+                        <li>❌ <strong>오답</strong>: 1스테이지 뒤로 이동 (1단계에서 틀리면 1단계 유지)</li>
+                        <li>제한 시간 내에 최대한 높은 스테이지까지 도달하는 것이 목표!</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h3 class="help-title">📝 게임 종료 후</h3>
+                    <ul class="help-list">
+                        <li>게임 종료 후 <strong>내가 푼 문제 전체 복습</strong> 화면 표시</li>
+                        <li>✅ 정답 문제 / ❌ 오답 문제 + 정답 확인 가능</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <script src="js/firebase-config.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/teacher.js"></script>
+    <script src="js/teacher-library.js"></script>
+    <script src="js/student.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
