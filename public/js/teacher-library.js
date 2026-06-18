@@ -99,16 +99,23 @@ function fillQuestion(stageId, q) {
     const qContainer = document.getElementById(`questions-${stageId}`);
     const item = document.createElement('div');
     item.className = 'question-item'; item.id = `q-${qId}`;
-    const isShort = q.type === 'short';
+    
+    const qType = q.type || 'multiple';
+    const isMultiple = qType === 'multiple';
+    const isOx = qType === 'ox';
+    const isShort = qType === 'short';
+
     item.innerHTML = `
         <button class="btn-remove-q" onclick="this.parentElement.remove()">✕</button>
         <div class="form-group"><label>문제 유형</label>
             <select onchange="toggleQuestionType(${qId}, this.value)" id="qtype-${qId}">
-                <option value="multiple" ${!isShort?'selected':''}>객관식</option>
-                <option value="short" ${isShort?'selected':''}>주관식</option>
+                <option value="multiple" ${isMultiple?'selected':''}>객관식 (4지선다)</option>
+                <option value="ox" ${isOx?'selected':''}>OX 퀴즈</option>
+                <option value="short" ${isShort?'selected':''}>주관식 (단답형)</option>
             </select></div>
         <div class="form-group"><label>문제</label><input type="text" id="qtext-${qId}" value="${escapeAttr(q.text||'')}"></div>
-        <div id="qchoices-${qId}" ${isShort?'class="hidden"':''}>
+        
+        <div id="qchoices-${qId}" class="${isMultiple ? '' : 'hidden'}">
             <div class="form-group"><label>보기</label><div class="choices-edit">
                 <input type="text" id="qc-${qId}-0" value="${escapeAttr((q.choices||[])[0]||'')}">
                 <input type="text" id="qc-${qId}-1" value="${escapeAttr((q.choices||[])[1]||'')}">
@@ -118,9 +125,23 @@ function fillQuestion(stageId, q) {
             <div class="correct-marker"><label>정답:</label><select id="qans-m-${qId}">
                 <option value="0" ${q.answer===0?'selected':''}>①</option><option value="1" ${q.answer===1?'selected':''}>②</option>
                 <option value="2" ${q.answer===2?'selected':''}>③</option><option value="3" ${q.answer===3?'selected':''}>④</option>
-            </select></div></div>
-        <div id="qshort-${qId}" ${!isShort?'class="hidden"':''}>
-            <div class="form-group"><label>정답</label><input type="text" id="qans-s-${qId}" value="${escapeAttr((q.answers||[]).join(', '))}"></div></div>`;
+            </select></div>
+        </div>
+
+        <div id="qox-${qId}" class="${isOx ? '' : 'hidden'}">
+            <div class="correct-marker">
+                <label>정답:</label>
+                <div class="ox-select">
+                    <button type="button" class="btn-ox ${q.answer===0?'selected':''}" id="qox-o-${qId}" onclick="selectOX(${qId},'O')">⭕ O</button>
+                    <button type="button" class="btn-ox ${q.answer===1?'selected':''}" id="qox-x-${qId}" onclick="selectOX(${qId},'X')">❌ X</button>
+                </div>
+                <input type="hidden" id="qans-ox-${qId}" value="${q.answer===1?'X':'O'}">
+            </div>
+        </div>
+
+        <div id="qshort-${qId}" class="${isShort ? '' : 'hidden'}">
+            <div class="form-group"><label>정답</label><input type="text" id="qans-s-${qId}" value="${escapeAttr((q.answers||[]).join(', '))}"></div>
+        </div>`;
     qContainer.appendChild(item);
 }
 
@@ -380,7 +401,21 @@ function applyParsedQuestions() {
         card.className = 'stage-card'; card.id = `stage-${stageId}`;
         card.innerHTML = `<div class="stage-card-header"><h4>🏁 스테이지 ${idx+1}: ${escapeHtml(stage.title)}</h4><button class="btn-remove-stage" onclick="removeStage(${stageId})">✕</button></div><div id="questions-${stageId}" class="questions-list"></div><button class="btn-add-question" onclick="addQuestion(${stageId})">+ 문제 추가</button>`;
         container.appendChild(card);
-        stage.questions.forEach(q => fillQuestion(stageId, { type:'short', text: q.text, answers: q.answer ? [q.answer] : [] }));
+        stage.questions.forEach(q => {
+            let type = 'short';
+            let answerObj = { answers: q.answer ? [q.answer] : [] };
+            
+            // OX 문제 자동 감지
+            if (q.answer) {
+                const ans = q.answer.trim().toUpperCase();
+                if (['O', 'X', '⭕', '❌', '정답: O', '정답: X', '정답 O', '정답 X', '정답:O', '정답:X'].includes(ans)) {
+                    type = 'ox';
+                    answerObj = { answer: (ans.includes('X') || ans.includes('❌')) ? 1 : 0 };
+                }
+            }
+            
+            fillQuestion(stageId, { type: type, text: q.text, ...answerObj });
+        });
     });
     closePasteModal();
     showToast(`✅ ${parsedStages.length}개 스테이지 입력 완료!`);
