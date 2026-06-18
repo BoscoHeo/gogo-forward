@@ -448,7 +448,10 @@ function showFeedback(correct) {
         
         if (myConsecutiveWrong >= 2) {
             myConsecutiveWrong = 0;
-            if (myCurrentStage > 1) {
+            if (isBonusMode) {
+                myBonusCorrectCount = 0;
+                content.innerHTML = '<div class="fb-icon">😢</div><div class="fb-text">오답! (2회 누적)</div><div class="fb-sub">보너스 득점 진행도가 초기화됩니다!</div>';
+            } else if (myCurrentStage > 1) {
                 myCurrentStage--;
                 myStageCorrectCount = 0;
                 myBonusCorrectCount = 0;
